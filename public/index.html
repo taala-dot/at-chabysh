@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐴 Кыргызские Конные Гонки</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #E8112D 0%, #FFDA44 50%, #E8112D 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Киргизский орнамент на фоне */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,218,68,0.1) 35px, rgba(255,218,68,0.1) 70px),
+                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(232,17,45,0.1) 35px, rgba(232,17,45,0.1) 70px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Заголовок с киргизским орнаментом */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 4px solid #FFDA44;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '◆◆◆◆◆◆◆◆◆◆';
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            color: #E8112D;
+            font-size: 1.2rem;
+            letter-spacing: 1rem;
+            opacity: 0.3;
+        }
+
+        .header::after {
+            content: '◆◆◆◆◆◆◆◆◆◆';
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            color: #E8112D;
+            font-size: 1.2rem;
+            letter-spacing: 1rem;
+            opacity: 0.3;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            color: #E8112D;
+            text-shadow: 3px 3px 0px #FFDA44;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        /* Экран входа */
+        .welcome-screen {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 500px;
+            margin: 0 auto;
+            border: 4px solid #FFDA44;
+        }
+
+        .welcome-screen h2 {
+            color: #E8112D;
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 3px solid #FFDA44;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #E8112D;
+            box-shadow: 0 0 0 3px rgba(232,17,45,0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #E8112D, #C70D24);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(232,17,45,0.4);
+            margin-bottom: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(232,17,45,0.5);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #FFDA44, #FFC700);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(255,218,68,0.4);
+        }
+
+        /* Комната ожидания */
+        .lobby {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 4px solid #FFDA44;
+        }
+
+        .room-code {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #E8112D, #C70D24);
+            border-radius: 12px;
+            color: white;
+        }
+
+        .room-code-value {
+            font-size: 3rem;
+            font-weight: bold;
+            letter-spacing: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .player-card {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #FFF9E6, #FFEDA0);
+            border: 3px solid #FFDA44;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .player-card.empty {
+            background: #f0f0f0;
+            border-style: dashed;
+            opacity: 0.5;
+        }
+
+        .player-card.bot {
+            background: linear-gradient(135deg, #E8F5E9, #C8E6C9);
+            border-color: #4CAF50;
+        }
+
+        .player-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #E8112D;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Игровой экран */
+        .game-screen {
+            display: none;
+        }
+
+        .countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .countdown-number {
+            font-size: 15rem;
+            color: #FFDA44;
+            font-weight: bold;
+            text-shadow: 0 0 50px #E8112D;
+            animation: pulse 1s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+
+        .race-track {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin-bottom: 2rem;
+            border: 4px solid #FFDA44;
+        }
+
+        .track-lane {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .track-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-info {
+            font-weight: bold;
+            color: #E8112D;
+            font-size: 1.1rem;
+        }
+
+        .player-stats {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .track-bar {
+            height: 60px;
+            background: linear-gradient(to bottom, #8B4513 0%, #A0522D 50%, #8B4513 100%);
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            border: 3px solid #5D2E0C;
+        }
+
+        .track-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #90EE90, #32CD32);
+            transition: width 0.2s;
+            border-radius: 30px;
+        }
+
+        .horse-icon {
+            position: absolute;
+            font-size: 2.5rem;
+            top: 50%;
+            transform: translate(-50%, -50%) scaleX(-1); /* Переворачиваем коня */
+            transition: left 0.2s;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.5));
+        }
+
+        /* Поле ввода текста */
+        .typing-area {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 4px solid #FFDA44;
+        }
+
+        .text-display {
+            font-size: 1.8rem;
+            line-height: 2.5rem;
+            margin-bottom: 1.5rem;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+            padding: 1.5rem;
+            background: #FFF9E6;
+            border-radius: 12px;
+            border: 2px solid #FFDA44;
+        }
+
+        .char-correct {
+            color: #22C55E;
+            background: #DCFCE7;
+        }
+
+        .char-incorrect {
+            color: #EF4444;
+            background: #FEE2E2;
+        }
+
+        .char-pending {
+            color: #999;
+        }
+
+        .typing-input {
+            width: 100%;
+            padding: 1.5rem;
+            font-size: 1.3rem;
+            border: 3px solid #E8112D;
+            border-radius: 12px;
+            outline: none;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Результаты */
+        .results-screen {
+            background: white;
+            padding: 3rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 4px solid #FFDA44;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .results-title {
+            text-align: center;
+            font-size: 3rem;
+            color: #E8112D;
+            margin-bottom: 2rem;
+        }
+
+        .leaderboard {
+            list-style: none;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #FFF9E6, #FFEDA0);
+            border-radius: 12px;
+            border: 3px solid #FFDA44;
+        }
+
+        .leaderboard-item.first {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            border-color: #FFD700;
+        }
+
+        .leaderboard-item.second {
+            background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
+            border-color: #C0C0C0;
+        }
+
+        .leaderboard-item.third {
+            background: linear-gradient(135deg, #CD7F32, #B87333);
+            border-color: #CD7F32;
+        }
+
+        .position {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-right: 1.5rem;
+            min-width: 50px;
+        }
+
+        .player-details {
+            flex-grow: 1;
+        }
+
+        .player-details .name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stats {
+            display: flex;
+            gap: 2rem;
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error-message {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 2px solid #DC2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏇 Кыргызские Конные Гонки</h1>
+            <p class="subtitle">Көк бөрү жана клавиатура!</p>
+        </div>
+
+        <!-- Экран входа -->
+        <div id="welcome-screen" class="welcome-screen">
+            <h2>Добро пожаловать!</h2>
+            <div id="error-container"></div>
+            <div class="input-group">
+                <label for="player-name">Ваше имя:</label>
+                <input type="text" id="player-name" placeholder="Манас" maxlength="20">
+            </div>
+            <button class="btn" onclick="createRoom()">🏠 Создать комнату</button>
+            <div style="text-align: center; margin: 1rem 0; color: #999;">или</div>
+            <div class="input-group">
+                <label for="room-code-input">Код комнаты:</label>
+                <input type="text" id="room-code-input" placeholder="ABC123" maxlength="6" style="text-transform: uppercase;">
+            </div>
+            <button class="btn btn-secondary" onclick="joinRoom()">🚪 Присоединиться</button>
+        </div>
+
+        <!-- Лобби -->
+        <div id="lobby-screen" class="lobby hidden">
+            <div class="room-code">
+                <div>Код комнаты:</div>
+                <div class="room-code-value" id="room-code-display"></div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem;">Поделитесь кодом с друзьями!</div>
+            </div>
+
+            <h3 style="color: #E8112D; margin-bottom: 1rem; text-align: center;">Игроки в комнате:</h3>
+            <div class="players-grid" id="players-grid">
+                <!-- Заполняется JS -->
+            </div>
+
+            <button class="btn" id="start-btn" onclick="startGame()" style="max-width: 400px; margin: 0 auto; display: block;">
+                🏁 Начать гонку!
+            </button>
+        </div>
+
+        <!-- Игровой экран -->
+        <div id="game-screen" class="game-screen">
+            <div class="race-track" id="race-track">
+                <!-- Заполняется JS -->
+            </div>
+
+            <div class="typing-area">
+                <div class="text-display" id="text-display"></div>
+                <input 
+                    type="text" 
+                    id="typing-input" 
+                    class="typing-input" 
+                    placeholder="Начните печатать..."
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+            </div>
+        </div>
+
+        <!-- Результаты -->
+        <div id="results-screen" class="results-screen hidden">
+            <h2 class="results-title">🏆 Результаты</h2>
+            <ol class="leaderboard" id="leaderboard">
+                <!-- Заполняется JS -->
+            </ol>
+            <button class="btn" onclick="backToWelcome()" style="margin-top: 2rem;">
+                🔄 Новая игра
+            </button>
+        </div>
+    </div>
+
+    <!-- Обратный отсчет -->
+    <div id="countdown-overlay" class="countdown-overlay hidden">
+        <div class="countdown-number" id="countdown-number"></div>
+    </div>
+
+    <script>
+        const socket = io('http://localhost:3000');
+        
+        let currentRoom = null;
+        let myPlayerId = null;
+        let gameStartTime = null;
+
+        // Создание комнаты
+        function createRoom() {
+            const playerName = document.getElementById('player-name').value.trim();
+            if (!playerName) {
+                showError('Введите ваше имя!');
+                return;
+            }
+            socket.emit('create-room', playerName);
+        }
+
+        // Присоединение к комнате
+        function joinRoom() {
+            const playerName = document.getElementById('player-name').value.trim();
+            const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+            
+            if (!playerName) {
+                showError('Введите ваше имя!');
+                return;
+            }
+            
+            if (!roomCode || roomCode.length !== 6) {
+                showError('Введите корректный код комнаты!');
+                return;
+            }
+            
+            socket.emit('join-room', { roomCode, playerName });
+        }
+
+        // Старт игры
+        function startGame() {
+            socket.emit('start-game');
+        }
+
+        // Обработка ввода
+        const typingInput = document.getElementById('typing-input');
+        typingInput.addEventListener('input', function(e) {
+            if (!currentRoom || currentRoom.state !== 'racing') return;
+
+            const text = currentRoom.text;
+            const input = e.target.value;
+            
+            // Обновление отображения текста
+            updateTextDisplay(text, input);
+            
+            // Подсчет статистики
+            const correctChars = input.split('').filter((char, i) => char === text[i]).length;
+            const progress = (correctChars / text.length) * 100;
+            
+            const timeElapsed = (Date.now() - gameStartTime) / 1000 / 60; // минуты
+            const wordsTyped = correctChars / 5;
+            const wpm = Math.round(wordsTyped / timeElapsed);
+            
+            const accuracy = input.length > 0 ? Math.round((correctChars / input.length) * 100) : 100;
+            
+            socket.emit('update-progress', { progress, wpm, accuracy });
+        });
+
+        // Обновление отображения текста
+        function updateTextDisplay(text, input) {
+            const display = document.getElementById('text-display');
+            display.innerHTML = text.split('').map((char, i) => {
+                let className = 'char-pending';
+                if (i < input.length) {
+                    className = input[i] === char ? 'char-correct' : 'char-incorrect';
+                }
+                return `<span class="${className}">${char}</span>`;
+            }).join('');
+        }
+
+        // Показать ошибку
+        function showError(message) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `<div class="error-message">${message}</div>`;
+            setTimeout(() => container.innerHTML = '', 3000);
+        }
+
+        // Вернуться к началу
+        function backToWelcome() {
+            location.reload();
+        }
+
+        // === SOCKET СОБЫТИЯ ===
+
+        socket.on('room-created', ({ roomCode, room }) => {
+            myPlayerId = socket.id;
+            currentRoom = room;
+            document.getElementById('room-code-display').textContent = roomCode;
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            updatePlayersGrid();
+        });
+
+        socket.on('room-joined', (room) => {
+            myPlayerId = socket.id;
+            currentRoom = room;
+            document.getElementById('room-code-display').textContent = room.code;
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            updatePlayersGrid();
+        });
+
+        socket.on('room-update', (room) => {
+            currentRoom = room;
+            updatePlayersGrid();
+            if (room.state === 'racing') {
+                updateRaceTrack();
+            }
+        });
+
+        socket.on('countdown', (count) => {
+            const overlay = document.getElementById('countdown-overlay');
+            const number = document.getElementById('countdown-number');
+            
+            if (count > 0) {
+                overlay.classList.remove('hidden');
+                number.textContent = count;
+            } else {
+                number.textContent = 'GO!';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 1000);
+            }
+        });
+
+        socket.on('race-start', (room) => {
+            currentRoom = room;
+            gameStartTime = Date.now();
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('text-display').textContent = room.text;
+            document.getElementById('typing-input').value = '';
+            document.getElementById('typing-input').focus();
+            createRaceTrack();
+        });
+
+        socket.on('player-finished', ({ playerId, playerName, position }) => {
+            console.log(`${playerName} финишировал на ${position} месте!`);
+        });
+
+        socket.on('game-finished', (room) => {
+            currentRoom = room;
+            showResults();
+        });
+
+        socket.on('error', (message) => {
+            showError(message);
+        });
+
+        // === UI ФУНКЦИИ ===
+
+        function updatePlayersGrid() {
+            const grid = document.getElementById('players-grid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < 4; i++) {
+                const player = currentRoom.players[i];
+                const card = document.createElement('div');
+                
+                if (player) {
+                    card.className = player.isBot ? 'player-card bot' : 'player-card';
+                    card.innerHTML = `
+                        <div class="player-name">${player.isBot ? '🤖' : '🏇'} ${player.name}</div>
+                        <div style="color: #666;">${player.id === myPlayerId ? '(Вы)' : player.isBot ? 'Бот' : 'Готов'}</div>
+                    `;
+                } else {
+                    card.className = 'player-card empty';
+                    card.innerHTML = `<div style="color: #999;">Ожидание...</div>`;
+                }
+                
+                grid.appendChild(card);
+            }
+
+            // Показать кнопку старта только хосту
+            const startBtn = document.getElementById('start-btn');
+            if (currentRoom.players[0] && currentRoom.players[0].id === myPlayerId) {
+                startBtn.style.display = 'block';
+            } else {
+                startBtn.style.display = 'none';
+            }
+        }
+
+        function createRaceTrack() {
+            const track = document.getElementById('race-track');
+            track.innerHTML = '';
+            
+            currentRoom.players.forEach(player => {
+                const lane = document.createElement('div');
+                lane.className = 'track-lane';
+                lane.innerHTML = `
+                    <div class="track-header">
+                        <span class="player-info">${player.isBot ? '🤖' : '🏇'} ${player.name}</span>
+                        <span class="player-stats" id="stats-${player.id}">WPM: 0 | Точность: 100%</span>
+                    </div>
+                    <div class="track-bar">
+                        <div class="track-progress" id="progress-${player.id}" style="width: 0%"></div>
+                        <div class="horse-icon" id="horse-${player.id}" style="left: 0%">🏇</div>
+                    </div>
+                `;
+                track.appendChild(lane);
+            });
+        }
+
+        function updateRaceTrack() {
+            currentRoom.players.forEach(player => {
+                const progressBar = document.getElementById(`progress-${player.id}`);
+                const horse = document.getElementById(`horse-${player.id}`);
+                const stats = document.getElementById(`stats-${player.id}`);
+                
+                if (progressBar && horse && stats) {
+                    const clampedProgress = Math.min(player.progress, 100);
+                    progressBar.style.width = clampedProgress + '%';
+                    horse.style.left = Math.min(clampedProgress, 95) + '%';
+                    stats.textContent = `WPM: ${player.wpm} | Точность: ${player.accuracy}%`;
+                }
+            });
+        }
+
+        function showResults() {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('results-screen').classList.remove('hidden');
+            
+            const leaderboard = document.getElementById('leaderboard');
+            leaderboard.innerHTML = '';
+            
+            const sortedPlayers = [...currentRoom.players].sort((a, b) => a.position - b.position);
+            
+            sortedPlayers.forEach((player, index) => {
+                const item = document.createElement('li');
+                item.className = 'leaderboard-item';
+                if (index === 0) item.classList.add('first');
+                if (index === 1) item.classList.add('second');
+                if (index === 2) item.classList.add('third');
+                
+                const medals = ['🥇', '🥈', '🥉', '4️⃣'];
+                
+                item.innerHTML = `
+                    <div class="position">${medals[index]}</div>
+                    <div class="player-details">
+                        <div class="name">${player.name} ${player.id === myPlayerId ? '(Вы)' : ''}</div>
+                        <div class="stats">
+                            <span>⚡ ${player.wpm} WPM</span>
+                            <span>🎯 ${player.accuracy}% точность</span>
+                            <span>⏱️ ${(player.finishTime / 1000).toFixed(1)}с</span>
+                        </div>
+                    </div>
+                `;
+                
+                leaderboard.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>

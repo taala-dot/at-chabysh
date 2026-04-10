@@ -1,0 +1,13 @@
+{
+  "name": "kyrgyz-horse-racer",
+  "version": "1.0.0",
+  "description": "Multiplayer typing race game with Kyrgyz national style",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  }
+}
